@@ -4,8 +4,7 @@ def is_safe(board, row, col, N):
         (-4,-4), (-4,4), (4,-4), (4,4),
         (-3,-3), (-3,3), (3,-3), (3,3),
         (-2,-2), (-2,2), (2,-2), (2,2),
-        (-1,-1), (-1,1), (1,-1), (1,1)
-    ]
+        (-1,-1), (-1,1), (1,-1), (1,1)]
 
     for di, dj in attack_pattern:
         r, c = row + di, col + dj
@@ -15,7 +14,7 @@ def is_safe(board, row, col, N):
 
 
 def mark_attacked_cells(board, positions, N):
-    """Размечает клетки под боем по ТОЧНОЙ схеме"""
+    """Размечает клетки под боем"""
     # Очищаем предыдущие отметки
     for i in range(N):
         for j in range(N):
@@ -26,8 +25,7 @@ def mark_attacked_cells(board, positions, N):
         (-4,-4), (-4,4), (4,-4), (4,4),
         (-3,-3), (-3,3), (3,-3), (3,3),
         (-2,-2), (-2,2), (2,-2), (2,2),
-        (-1,-1), (-1,1), (1,-1), (1,1)
-    ]
+        (-1,-1), (-1,1), (1,-1), (1,1)]
 
     for x, y in positions:
         for di, dj in attack_pattern:
