@@ -1,70 +1,113 @@
-def read_input(filename):
-    with open(filename, 'r') as f:
-        lines = f.readlines()
-        N, L, K = map(int, lines[0].strip().split())
-        placed_figures = [tuple(map(int, line.strip().split())) for line in lines[1:K+1]]
-    return N, L, K, placed_figures
+def is_safe(board, row, col, N):
+    """Проверяет безопасность клетки"""
+    attack_pattern = [
+        (-4,-4), (-4,4), (4,-4), (4,4),
+        (-3,-3), (-3,3), (3,-3), (3,3),
+        (-2,-2), (-2,2), (2,-2), (2,2),
+        (-1,-1), (-1,1), (1,-1), (1,1)
+    ]
 
-def is_safe(board, x, y, N):
-    # Проверка по горизонтали и вертикали
-    for i in range(N):
-        if board[x][i] == '#' or board[i][y] == '#':
+    for di, dj in attack_pattern:
+        r, c = row + di, col + dj
+        if 0 <= r < N and 0 <= c < N and board[r][c] == 1:
             return False
-    
-    # Проверка диагоналей на расстоянии 2
-    directions = [(-2, -2), (-2, 2), (2, -2), (2, 2)]
-    for dx, dy in directions:
-        nx, ny = x + dx, y + dy
-        if 0 <= nx < N and 0 <= ny < N and board[nx][ny] == '#':
-            return False
-    
     return True
 
-def place_figures(board, L, N, solutions, current_figures):
-    if L == 0:
-        solutions.append(list(current_figures))
+
+def mark_attacked_cells(board, positions, N):
+    """Размечает клетки под боем по ТОЧНОЙ схеме"""
+    # Очищаем предыдущие отметки
+    for i in range(N):
+        for j in range(N):
+            if board[i][j] == 2:
+                board[i][j] = 0
+
+    attack_pattern = [
+        (-4,-4), (-4,4), (4,-4), (4,4),
+        (-3,-3), (-3,3), (3,-3), (3,3),
+        (-2,-2), (-2,2), (2,-2), (2,2),
+        (-1,-1), (-1,1), (1,-1), (1,1)
+    ]
+
+    for x, y in positions:
+        for di, dj in attack_pattern:
+            r, c = x + di, y + dj
+            if 0 <= r < N and 0 <= c < N and board[r][c] == 0:
+                board[r][c] = 2
+
+
+def place_figures(board, start_row, start_col, positions, placed, total_required, N, solutions):
+    """Рекурсивно размещает фигуры, избегая дубликатов перестановок"""
+    if placed == total_required:
+        # Сохраняем отсортированное решение для уникальности
+        sorted_solution = tuple(sorted(positions))
+        if sorted_solution not in solutions:
+            solutions[sorted_solution] = True
         return
 
-    for x in range(N):
-        for y in range(N):
-            if board[x][y] == '0' and is_safe(board, x, y, N):
-                board[x][y] = '#'
-                current_figures.append((x, y))
-                place_figures(board, L - 1, N, solutions, current_figures)
-                current_figures.pop()
-                board[x][y] = '0'
+    # Продолжаем размещение с текущей позиции
+    for i in range(start_row, N):
+        start_j = start_col if i == start_row else 0
+        for j in range(start_j, N):
+            if board[i][j] == 0 and is_safe(board, i, j, N):
+                # Сохраняем текущее состояние
+                old_board = [row[:] for row in board]
 
-def print_board(board):
-    for row in board:
-        print(' '.join(row))
+                # Размещаем фигуру
+                board[i][j] = 1
+                positions.append((i, j))
+                mark_attacked_cells(board, positions, N)
 
-def format_solution(solutions):
-    return '\n'.join(' '.join(f'({x},{y})' for x, y in solution) for solution in solutions)
+                # Рекурсивный вызов с новой стартовой позицией
+                place_figures(board, i, j + 1, positions, placed + 1, total_required, N, solutions)
 
-def write_output(filename, solutions):
-    with open(filename, 'w') as f:
-        if solutions:
-            f.write(format_solution(solutions))
-        else:
-            f.write('no solutions')
+                # Backtrack
+                board[i][j] = 0
+                positions.pop()
+                board = [row[:] for row in old_board]
+                mark_attacked_cells(board, positions, N)
+
 
 def main():
-    N, L, K, placed_figures = read_input('input.txt')
+    # Чтение входных данных
+    with open('input.txt', 'r') as file:
+        N, L, K = map(int, file.readline().strip().split())
+        board = [[0] * N for _ in range(N)]
+        initial_positions = []
 
-    board = [['0' for _ in range(N)] for _ in range(N)]
-    
-    # Размещаем уже стоящие фигуры
-    for x, y in placed_figures:
-        board[x][y] = '#'
-    
-    solutions = []
-    place_figures(board, L, N, solutions, placed_figures)
+        for _ in range(K):
+            x, y = map(int, file.readline().strip().split())
+            board[x][y] = 1
+            initial_positions.append((x, y))
 
-    # Печатаем доску в консоль
-    print_board(board)
-    
-    # Записываем решения в выходной файл
-    write_output('output.txt', solutions)
+    # Первоначальная разметка клеток под боем
+    mark_attacked_cells(board, initial_positions, N)
+
+    # Используем словарь для хранения уникальных решений
+    unique_solutions = {}
+    place_figures(board, 0, 0, initial_positions.copy(), K, K + L, N, unique_solutions)
+
+    # Запись количества решений
+    with open('output.txt', 'w') as out_file:
+        out_file.write(f'{len(unique_solutions)}\n')
+
+    # Вывод информации
+    print("Количество решений:",len(unique_solutions))
+    if unique_solutions:
+        # Получаем первое решение
+        first_solution = next(iter(unique_solutions.keys()))
+        print("  Доска:")
+
+        # Создаем демонстрационную доску
+        demo_board = [[0] * N for _ in range(N)]
+        for x, y in first_solution:
+            demo_board[x][y] = 1
+        mark_attacked_cells(demo_board, first_solution, N)
+
+        # Выводим доску
+        for row in demo_board:
+            print(' '.join('#' if cell == 1 else '*' if cell == 2 else '0' for cell in row))
+
 
 if __name__ == '__main__':
     main()
